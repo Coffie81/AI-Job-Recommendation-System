@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Job Recommendation System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Job Recommendation System</h1>
+            <p>Enter your skills manually or upload your resume to get personalized job recommendations</p>
+        </div>
+
+        {% if error %}
+<div class="error-box">
+    {{ error }}
+
+    {% if existing_user_id %}
+    <!-- Show option to continue with existing account -->
+    <form action="/recommend-existing" method="POST" style="margin-top: 14px;">
+        <input type="hidden" name="existing_user_id" value="{{ existing_user_id }}">
+        <input type="hidden" name="name" value="{{ prefill_name }}">
+        <input type="hidden" name="email" value="{{ prefill_email }}">
+        <input type="hidden" name="skills" value="{{ prefill_skills }}">
+        <input type="hidden" name="experience" value="{{ prefill_experience }}">
+        <button type="submit" class="btn-secondary">
+            🔄 Continue Anyway & Get New Recommendations
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Pre-fill form fields if returning from duplicate error -->
+<div class="card">
+    <form action="/recommend" method="POST">
+        <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name" 
+                   value="{{ prefill_name or '' }}"
+                   placeholder="e.g. John Doe" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" 
+                   value="{{ prefill_email or '' }}"
+                   placeholder="e.g. john@email.com" required>
+        </div>
+
+        <div class="form-group">
+            <label for="experience">Years of Experience</label>
+            <input type="number" id="experience" name="experience" 
+                   value="{{ prefill_experience or '' }}"
+                   placeholder="e.g. 2" min="0" max="50">
+        </div>
+
+        <div class="resume-section">
+            <label>Upload Resume <span class="optional">(Optional — PDF or DOCX)</span></label>
+            <div class="upload-box" id="uploadBox">
+                <span id="uploadIcon">📄</span>
+                <p id="uploadText">Drag & drop your resume here or 
+                    <label for="resumeFile" class="upload-link">browse</label>
+                </p>
+                <input type="file" id="resumeFile" accept=".pdf,.docx" style="display:none">
+                <p class="upload-hint">Supported formats: PDF, DOCX</p>
+            </div>
+            <div id="uploadStatus" class="upload-status" style="display:none"></div>
+        </div>
+
+        <div class="divider"><span>OR enter skills manually</span></div>
+
+        <div class="form-group">
+            <label for="skills">Your Skills</label>
+            <input type="text" id="skills" name="skills"
+                   value="{{ prefill_skills or '' }}"
+                   placeholder="e.g. Python, Machine Learning, SQL" required>
+            <small>Skills will be auto-filled from resume, or you can type them here</small>
+        </div>
+
+        <button type="submit" class="btn">🔍 Get Job Recommendations</button>
+    </form>
+</div>
+
+    <script>
+        const resumeFile = document.getElementById('resumeFile');
+        const uploadBox = document.getElementById('uploadBox');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const uploadIcon = document.getElementById('uploadIcon');
+        const uploadText = document.getElementById('uploadText');
+        const skillsInput = document.getElementById('skills');
+
+        // Handle file selection
+        resumeFile.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                uploadResume(this.files[0]);
+            }
+        });
+
+        // Handle drag and drop
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('drag-over');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('drag-over');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadResume(file);
+        });
+
+        function uploadResume(file) {
+            uploadStatus.style.display = 'block';
+            uploadStatus.className = 'upload-status loading';
+            uploadStatus.textContent = '⏳ Extracting skills from resume...';
+            uploadIcon.textContent = '⏳';
+
+            const formData = new FormData();
+            formData.append('resume', file);
+
+            fetch('/upload-resume', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    uploadStatus.className = 'upload-status error';
+                    uploadStatus.textContent = '❌ ' + data.error;
+                    uploadIcon.textContent = '❌';
+                } else {
+                    skillsInput.value = data.skills;
+                    uploadStatus.className = 'upload-status success';
+                    uploadStatus.textContent = '✅ Skills extracted successfully from: ' + file.name;
+                    uploadIcon.textContent = '✅';
+                    uploadText.innerHTML = '<strong>' + file.name + '</strong> uploaded successfully';
+                }
+            })
+            .catch(() => {
+                uploadStatus.className = 'upload-status error';
+                uploadStatus.textContent = '❌ Upload failed. Please try again.';
+                uploadIcon.textContent = '❌';
+            });
+        }
+    </script>
+
+</body>
+</html>

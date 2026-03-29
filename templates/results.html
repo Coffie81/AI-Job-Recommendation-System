@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Job Recommendations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Your Job Recommendations</h1>
+            <p>Hello <strong>{{ name }}</strong>! Here are the best job matches for your skills.</p>
+        </div>
+
+        <div class="user-summary card">
+            <h3>📋 Your Profile</h3>
+            <p><strong>Skills:</strong> {{ skills }}</p>
+            <p><strong>Experience:</strong> {{ experience }} year(s)</p>
+        </div>
+
+        {% if recommendations %}
+            {% for job in recommendations %}
+            <div class="job-card card">
+
+                <div class="job-header">
+                    <h2>{{ job.job_title }}</h2>
+                    <span class="score-badge
+                        {% if job.score >= 70 %}high
+                        {% elif job.score >= 40 %}medium
+                        {% else %}low{% endif %}">
+                        {{ job.score }}% Match
+                    </span>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: {{ job.score  }}%"></div>
+                </div>
+
+                <p class="description">{{ job.description }}</p>
+
+                <! Skill Gap Analysis Section
+                <div class="gap-section">
+
+                    {% if job.matched_skills %}
+                    <div class="gap-block">
+                        <h4>✅ Skills You Have</h4>
+                        <div class="skill-tags">
+                            {% for skill in job.matched_skills %}
+                            <span class="tag matched">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if job.missing_skills %}
+                    <div class="gap-block">
+                        <h4>📚 Skills to Learn</h4>
+                        <div class="skill-tags">
+                            {% for skill in job.missing_skills %}
+                            <span class="tag missing">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="coverage-bar-wrap">
+                        <span class="coverage-label">Skill Coverage: {{ job.coverage_percentage }}%</span>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar coverage" style="width: {{ job.coverage_percentage }}%"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+            {% endfor %}
+
+        {% else %}
+            <div class="card">
+                <p>⚠️ No recommendations found. Please try different skills.</p>
+            </div>
+        {% endif %}
+
+        <a href="/" class="btn">🔄 Try Again</a>
+
+    </div>
+
+</body>
+</html>
