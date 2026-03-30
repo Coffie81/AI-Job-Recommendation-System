@@ -1,12 +1,22 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from database import initialize_database, add_user, save_recommendations, get_connection
 from model import get_recommendations
+from resume_parser import parse_resume
+import os
 
 app = Flask(__name__)
 
+# Upload folder setup
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {"pdf", "docx"}
+def allowed_file(filename):
+    """Check if uploaded file is PDF or DOCX."""
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 # Initialize database when app starts
 initialize_database()
-
 
 @app.route("/", methods=["GET"])
 def index():
@@ -99,6 +109,40 @@ def recommend_existing():
         experience=experience,
         recommendations=recommendations
     )
+
+@app.route("/upload-resume", methods=["POST"])
+def upload_resume():
+    try:
+        if "resume" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+
+        file = request.files["resume"]
+
+        if file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({"error": "Only PDF and DOCX files are allowed"}), 400
+
+        file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+        file.save(file_path)
+
+        result = parse_resume(file_path)
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        if result["error"]:
+            return jsonify({"error": result["error"]}), 400
+
+        if not result["skills"]:
+            return jsonify({"error": "No recognizable skills found in resume. Please enter skills manually."}), 400
+
+        return jsonify({"skills": result["skills"]})
+
+    except Exception as e:
+        print(f"❌ Upload error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)    
